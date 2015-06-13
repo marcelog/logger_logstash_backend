@@ -61,7 +61,7 @@ defmodule LoggerLogstashBackend do
     Application.put_env :logger, name, opts
 
     level = Keyword.get opts, :level, :debug
-    metadata = Keyword.get opts, :metadata, %{}
+    metadata = Keyword.get opts, :metadata, []
     type = Keyword.get opts, :type, "elixir"
     host = Keyword.get opts, :host
     port = Keyword.get opts, :port

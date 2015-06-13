@@ -57,6 +57,7 @@ Logger.add_backend {LoggerLogstashBackend, :debug}
 Logger.configure {LoggerLogstashBackend, :debug},
   host: "127.0.0.1",
   port: 10001,
+  level: :debug,
   metadata: ...
 ```
 
@@ -69,7 +70,7 @@ config :logger,
 config :logger, :error_log,
   host: "some.host.com",
   port: 10001,
-  level: error,
+  level: :error,
   type: "my_type_of_app_or_node",
   metadata: [
     extra_fields: "go here"

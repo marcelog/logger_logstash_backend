@@ -61,6 +61,5 @@ config :logger, :error_log,
   type: "my_type_of_app_or_node",
   metadata: [
     extra_fields: "go here"
-  ],
-  level: :error
+  ]
 ```

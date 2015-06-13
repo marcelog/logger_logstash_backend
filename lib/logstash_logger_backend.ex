@@ -28,7 +28,7 @@ defmodule LoggerLogstashBackend do
       socket: socket
     }
   ) do
-    md = Enum.into(md, metadata)
+    md = Enum.into(Keyword.merge(md, metadata), %{})
     md = Map.put md, :pid, inspect(md.pid)
     ts = Date.from(ts, :local)
     {:ok, json} = JSX.encode %{

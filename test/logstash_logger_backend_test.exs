@@ -12,14 +12,12 @@ defmodule LoggerLogstashBackendTest do
       port: 10001,
       level: :info,
       type: "some_app",
-      metadata: %{
+      metadata: [
         some_metadata: "go here"
-      }
+      ]
     ]
-    IO.puts "Opening UDP server"
     {:ok, socket} = :gen_udp.open 10001, [:binary, {:active, true}]
     on_exit fn ->
-      IO.puts "Closing UDP server"
       :ok = :gen_udp.close socket
     end
     :ok
@@ -38,7 +36,7 @@ defmodule LoggerLogstashBackendTest do
       "module" => "Elixir.LoggerLogstashBackendTest",
       "pid" => me,
       "some_metadata" => "go here",
-      "line" => 29,
+      "line" => 27,
       "key1" => "field1"
     }
     {:ok, ts} = DateFormat.parse data["@timestamp"], "%FT%T%z", :strftime

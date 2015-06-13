@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/marcelog/logstash_logger_backend.svg)](https://travis-ci.org/marcelog/logstash_logger_backend)
+[![Build Status](https://travis-ci.org/marcelog/logger_logstash_backend.svg)](https://travis-ci.org/marcelog/logger_logstash_backend)
 
 LoggerLogstashBackend
 =====================

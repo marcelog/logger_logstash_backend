@@ -1,5 +1,7 @@
-%{"earmark": {:hex, :earmark, "0.1.17"},
+%{"combine": {:hex, :combine, "0.5.2"},
+  "earmark": {:hex, :earmark, "0.1.17"},
   "ex_doc": {:hex, :ex_doc, "0.7.3"},
   "exjsx": {:hex, :exjsx, "3.1.0"},
   "jsx": {:hex, :jsx, "2.4.0"},
-  "timex": {:hex, :timex, "0.13.4"}}
+  "timex": {:hex, :timex, "0.18.2"},
+  "tzdata": {:hex, :tzdata, "0.1.7"}}

@@ -55,9 +55,9 @@ defmodule LoggerLogstashBackendTest do
       "key1" => "field1"
     }
     {:ok, ts} = DateFormat.parse data["@timestamp"], "%FT%T%z", :strftime
-    ts = Date.convert ts, :secs
+    ts = Date.to_secs ts
 
-    now = Date.convert Date.local, :secs
+    now = Date.to_secs Date.local
 
     assert (now - ts) < 1000
   end

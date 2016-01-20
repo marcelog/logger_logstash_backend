@@ -42,18 +42,18 @@ defmodule LoggerLogstashBackendTest do
     Logger.info "hello world", [key1: "field1"]
     json = get_log
     {:ok, data} = JSX.decode json
-    me = inspect self
     assert data["type"] === "some_app"
     assert data["message"] === "hello world"
-    assert data["fields"] === %{
+    expected = %{
       "function" => "test can log/1",
       "level" => "info",
       "module" => "Elixir.LoggerLogstashBackendTest",
-      "pid" => me,
+      "pid" => (inspect self),
       "some_metadata" => "go here",
       "line" => 42,
       "key1" => "field1"
     }
+    assert contains?(data["fields"], expected)
     {:ok, ts} = DateFormat.parse data["@timestamp"], "%FT%T%z", :strftime
     ts = Date.to_secs ts
 
@@ -72,5 +72,11 @@ defmodule LoggerLogstashBackendTest do
       {:udp, _, _, _, json} -> json
     after 500 -> :nothing_received
     end
+  end
+
+  defp contains?(map1, map2) do
+    Enum.all?(Map.to_list(map2), fn {key, value} ->
+      Map.fetch!(map1, key) == value
+    end)
   end
 end

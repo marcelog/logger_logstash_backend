@@ -5,7 +5,7 @@ defmodule LoggerLogstashBackend.Mixfile do
     [app: :logger_logstash_backend,
      name: "logger_logstash_backend",
      source_url: "https://github.com/marcelog/logger_logstash_backend",
-     version: "0.1.5",
+     version: "1.0.0",
      elixir: ">= 1.0.0",
      description: description,
      package: package,

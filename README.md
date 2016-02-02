@@ -42,7 +42,7 @@ To use it in your Mix projects, first add it as a dependency:
 
 ```elixir
 def deps do
-  [{:logger_logstash_backend, "~> 0.1.5"}]
+  [{:logger_logstash_backend, "~> 1.0.0"}]
 end
 ```
 Then run mix deps.get to install it.

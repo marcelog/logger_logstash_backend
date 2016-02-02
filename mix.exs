@@ -13,7 +13,7 @@ defmodule LoggerLogstashBackend.Mixfile do
   end
 
   def application do
-    [applications: [:logger]]
+    [applications: [:logger, :tzdata]]
   end
 
   defp deps do
@@ -21,7 +21,7 @@ defmodule LoggerLogstashBackend.Mixfile do
       {:earmark, "~> 0.1", only: :dev},
       {:ex_doc, "~> 0.7", only: :dev},
       {:exjsx, "~> 3.1.0"},
-      {:timex, "~> 0.18.1"}
+      {:timex, ">= 1.0.0"}
     ]
   end
 

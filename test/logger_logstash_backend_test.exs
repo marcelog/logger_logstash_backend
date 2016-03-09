@@ -54,11 +54,10 @@ defmodule LoggerLogstashBackendTest do
       "key1" => "field1"
     }
     assert contains?(data["fields"], expected)
-    {:ok, ts} = DateFormat.parse data["@timestamp"], "%FT%T%z", :strftime
-    ts = Date.to_secs ts
+    {:ok, ts} = Timex.parse data["@timestamp"], "%FT%T%z", :strftime
+    ts = Timex.to_unix ts
 
-    now = Date.to_secs Date.local
-
+    now = Timex.to_unix Timex.DateTime.local
     assert (now - ts) < 1000
   end
 

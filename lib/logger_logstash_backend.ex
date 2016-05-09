@@ -43,14 +43,18 @@ defmodule LoggerLogstashBackend do
       socket: socket
     }
   ) do
-    md = Enum.into(Keyword.merge(md, metadata), %{})
-    md = Map.put md, :pid, inspect(md.pid)
+    fields = md
+             |> Keyword.merge(metadata)
+             |> Enum.into(%{})
+             |> Map.put(:level, to_string(level))
+             |> inspect_pids
+
     ts = Timex.datetime(ts, :local)
     {:ok, json} = JSX.encode %{
       type: type,
       "@timestamp": Timex.format!(ts, "%FT%T%z", :strftime),
       message: to_string(msg),
-      fields: Map.put(md, :level, to_string(level))
+      fields: fields
     }
     :gen_udp.send socket, host, port, to_char_list(json)
   end
@@ -75,5 +79,16 @@ defmodule LoggerLogstashBackend do
       type: type,
       metadata: metadata
     }
+  end
+
+  # inspects the argument only if it is a pid
+  defp inspect_pid(pid) when is_pid(pid), do: inspect(pid)
+  defp inspect_pid(other), do: other
+
+  # inspects the field values only if they are pids
+  defp inspect_pids(fields) when is_map(fields) do
+    Enum.into fields, %{}, fn {key, value} ->
+      {key, inspect_pid(value)}
+    end
   end
 end

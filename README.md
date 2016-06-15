@@ -12,7 +12,7 @@ that will send logs to the [Logstash UDP input](https://www.elastic.co/guide/en/
  * **host**: String.t. The hostname or ip address where to send the logs.
  * **port**: Integer. The port number. Logstash should be listening with its UDP
  inputter.
- * **metdata**: Keyword.t. Extra fields to be added when sending the logs. These will
+ * **metadata**: Keyword.t. Extra fields to be added when sending the logs. These will
  be merged with the metadata sent in every log message.
  * **level**: Atom. Minimum level for this backend.
  * **type**: String.t. Type of logs. Useful to filter in logstash.

@@ -13,47 +13,60 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ################################################################################
-defmodule LoggerLogstashBackendTest do
+defmodule LoggerLogstashBackend.TCPTest do
   use ExUnit.Case, async: false
   require Logger
   use Timex
 
-  @backend {LoggerLogstashBackend, :test}
-  Logger.add_backend @backend
+  @backend {LoggerLogstashBackend, :tcp_test}
 
-  setup do
-    Logger.configure_backend @backend, [
+  setup context = %{line: line} do
+    # have to open socket before configure_backend, so that it is listening when connect happens
+    {:ok, listen_socket} = :gen_tcp.listen 0, [:binary, {:active, true}, {:ip, {127, 0, 0, 1}}, {:reuseaddr, true}]
+    {:ok, port} = :inet.port(listen_socket)
+
+    backend = {LoggerLogstashBackend, String.to_atom("#{inspect __MODULE__}#{line}")}
+
+    Logger.add_backend backend
+    Logger.configure_backend backend, [
       host: "127.0.0.1",
-      port: 10001,
+      port: port,
       level: :info,
       type: "some_app",
       metadata: [
         some_metadata: "go here"
-      ]
+      ],
+      protocol: :tcp
     ]
-    {:ok, socket} = :gen_udp.open 10001, [:binary, {:active, true}]
+
+    {:ok, accept_socket} = :gen_tcp.accept(listen_socket, 1_000)
+
     on_exit fn ->
-      :ok = :gen_udp.close socket
+      Logger.remove_backend backend
+      :ok = :gen_tcp.close accept_socket
+      :ok = :gen_tcp.close listen_socket
     end
-    :ok
+
+    {:ok, context}
   end
 
   test "can log" do
     Logger.info "hello world", [key1: "field1"]
-    json = get_log
-    {:ok, data} = JSX.decode json
+
+    assert {:ok, data} = JSX.decode get_log!
     assert data["type"] === "some_app"
     assert data["message"] === "hello world"
-    expected = %{
-      "function" => "test can log/1",
-      "level" => "info",
-      "module" => "Elixir.LoggerLogstashBackendTest",
-      "pid" => (inspect self),
-      "some_metadata" => "go here",
-      "line" => 42,
-      "key1" => "field1"
-    }
-    assert contains?(data["fields"], expected)
+
+    fields = data["fields"]
+
+    assert fields["function"] == "test can log/1"
+    assert fields["key1"] == "field1"
+    assert fields["level"] == "info"
+    assert fields["line"] == 54
+    assert fields["module"] == to_string(__MODULE__)
+    assert fields["pid"] == inspect(self)
+    assert fields["some_metadata"] == "go here"
+
     {:ok, ts} = Timex.parse data["@timestamp"], "%FT%T%z", :strftime
     ts = Timex.to_unix ts
 
@@ -63,20 +76,21 @@ defmodule LoggerLogstashBackendTest do
 
   test "can log pids" do
     Logger.info "pid", [pid_key: self]
-    json = get_log
-    {:ok, data} = JSX.decode json
+
+    {:ok, data} = JSX.decode get_log!
     assert data["type"] === "some_app"
     assert data["message"] === "pid"
-    expected = %{
-      "function" => "test can log pids/1",
-      "level" => "info",
-      "module" => "Elixir.LoggerLogstashBackendTest",
-      "pid" => (inspect self),
-      "pid_key" => inspect(self),
-      "some_metadata" => "go here",
-      "line" => 65
-    }
-    assert contains?(data["fields"], expected)
+
+    fields = data["fields"]
+
+    assert fields["function"] == "test can log pids/1"
+    assert fields["pid_key"] == inspect(self)
+    assert fields["level"] == "info"
+    assert fields["line"] == 78
+    assert fields["module"] == to_string(__MODULE__)
+    assert fields["pid"] == inspect(self)
+    assert fields["some_metadata"] == "go here"
+
     {:ok, ts} = Timex.parse data["@timestamp"], "%FT%T%z", :strftime
     ts = Timex.to_unix ts
 
@@ -86,19 +100,19 @@ defmodule LoggerLogstashBackendTest do
 
   test "cant log when minor levels" do
     Logger.debug "hello world", [key1: "field1"]
-    :nothing_received = get_log
+    {:error, :nothing_received} = get_log
   end
 
   defp get_log do
     receive do
-      {:udp, _, _, _, json} -> json
-    after 500 -> :nothing_received
+      {:tcp, _socket, json} -> {:ok, json}
+    after 500 -> {:error, :nothing_received}
     end
   end
 
-  defp contains?(map1, map2) do
-    Enum.all?(Map.to_list(map2), fn {key, value} ->
-      Map.fetch!(map1, key) == value
-    end)
+  defp get_log! do
+    {:ok, log} = get_log
+
+    log
   end
 end

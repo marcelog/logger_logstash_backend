@@ -14,15 +14,42 @@
 # limitations under the License.
 ################################################################################
 defmodule LoggerLogstashBackend do
+  alias LoggerLogstashBackend.Socket
+
   use GenEvent
   use Timex
 
+  # Struct
+
+  defstruct ~w(
+               host
+               level
+               metadata
+               name
+               port
+               protocol
+               socket
+               type
+             )a
+
+  # Functions
+
+  ## GenEvent callbacks
+
   def init({__MODULE__, name}) do
-    {:ok, configure(name, [])}
+    # trap exits, so that cleanup can occur in terminate/2
+    Process.flag(:trap_exit, true)
+
+    configure(name, [])
   end
 
   def handle_call({:configure, opts}, %{name: name}) do
-    {:ok, :ok, configure(name, opts)}
+    case configure(name, opts) do
+      {:ok, state} ->
+        {:ok, :ok, state}
+      reply = {:error, _reason} ->
+        {:remove_handler, reply}
+    end
   end
 
   def handle_event(
@@ -30,17 +57,26 @@ defmodule LoggerLogstashBackend do
   ) do
     if is_nil(min_level) or Logger.compare_levels(level, min_level) != :lt do
       log_event level, msg, ts, md, state
+    else
+      {:ok, state}
     end
-    {:ok, state}
   end
 
+  @doc """
+  Closes socket when the backend is removed
+  """
+  def terminate(_, state)  do
+    :ok = Socket.close(state)
+
+    state
+  end
+
+  ## Private Functions
+
   defp log_event(
-    level, msg, ts, md, %{
-      host: host,
-      port: port,
+    level, msg, ts, md, state = %{
       type: type,
-      metadata: metadata,
-      socket: socket
+      metadata: metadata
     }
   ) do
     fields = md
@@ -56,10 +92,19 @@ defmodule LoggerLogstashBackend do
       message: to_string(msg),
       fields: fields
     }
-    :gen_udp.send socket, host, port, to_char_list(json)
+
+    with {:error, reason} <- Socket.send(state, [json, "\n"]) do
+      # fallback in case TCP configuration is bad
+      IO.puts :stderr,
+              "Could not log message (#{json}) to socket (#{url(state)}) due to #{inspect reason}.  " <>
+              "Check that state (#{inspect state}) is correct."
+    end
+
+
+    {:ok, state}
   end
 
-  defp configure(name, opts) do
+  defp configure(name, opts) when is_atom(name) and is_list(opts) do
     env = Application.get_env :logger, name, []
     opts = Keyword.merge env, opts
     Application.put_env :logger, name, opts
@@ -69,17 +114,27 @@ defmodule LoggerLogstashBackend do
     type = Keyword.get opts, :type, "elixir"
     host = Keyword.get opts, :host
     port = Keyword.get opts, :port
-    {:ok, socket} = :gen_udp.open 0
-    %{
-      name: name,
-      host: to_char_list(host),
-      port: port,
-      level: level,
-      socket: socket,
-      type: type,
-      metadata: metadata
-    }
+    protocol = Keyword.get opts, :protocol, :udp
+
+    state = %__MODULE__{level: level, metadata: metadata, name: name, protocol: protocol, type: type}
+
+    configure_socket(state, host, port)
   end
+
+  defp configure_socket(state = %__MODULE__{host: host, port: port}) do
+    case Socket.open %{state | host: to_char_list(host), port: port} do
+      reply = {:error, reason} ->
+        IO.puts :stderr, "Could not open socket (#{url(state)}) due to reason #{inspect reason}"
+
+        reply
+      other ->
+        other
+    end
+  end
+
+  defp configure_socket(state, host, port) when is_nil(host) or is_nil(port), do: {:ok, state}
+  defp configure_socket(state, host, port), do: configure_socket %{state | host: to_char_list(host), port: port}
+
 
   # inspects the argument only if it is a pid
   defp inspect_pid(pid) when is_pid(pid), do: inspect(pid)
@@ -90,5 +145,9 @@ defmodule LoggerLogstashBackend do
     Enum.into fields, %{}, fn {key, value} ->
       {key, inspect_pid(value)}
     end
+  end
+
+  defp url(%__MODULE__{host: host, port: port, protocol: protocol}) do
+    "#{protocol}://#{host}:#{port}"
   end
 end

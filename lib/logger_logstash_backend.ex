@@ -62,6 +62,16 @@ defmodule LoggerLogstashBackend do
     end
   end
 
+  def handle_info({:tcp_closed, socket}, state = %__MODULE__{host: host, port: port, socket: socket}) do
+    with {:error, _} <- configure_socket(state, host, port) do
+      {:ok, state}
+    end
+  end
+
+  def handle_info(_, state) do
+    {:ok, state}
+  end
+
   @doc """
   Closes socket when the backend is removed
   """

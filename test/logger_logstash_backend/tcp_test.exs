@@ -47,7 +47,11 @@ defmodule LoggerLogstashBackend.TCPTest do
       :ok = :gen_tcp.close listen_socket
     end
 
-    {:ok, context}
+    full_context = context
+                   |> Map.put(:accept_socket, accept_socket)
+                   |> Map.put(:listen_socket, listen_socket)
+
+    {:ok, full_context}
   end
 
   test "can log" do
@@ -62,7 +66,7 @@ defmodule LoggerLogstashBackend.TCPTest do
     assert fields["function"] == "test can log/1"
     assert fields["key1"] == "field1"
     assert fields["level"] == "info"
-    assert fields["line"] == 54
+    assert fields["line"] == 58
     assert fields["module"] == to_string(__MODULE__)
     assert fields["pid"] == inspect(self)
     assert fields["some_metadata"] == "go here"
@@ -86,7 +90,7 @@ defmodule LoggerLogstashBackend.TCPTest do
     assert fields["function"] == "test can log pids/1"
     assert fields["pid_key"] == inspect(self)
     assert fields["level"] == "info"
-    assert fields["line"] == 78
+    assert fields["line"] == 82
     assert fields["module"] == to_string(__MODULE__)
     assert fields["pid"] == inspect(self)
     assert fields["some_metadata"] == "go here"
@@ -101,6 +105,12 @@ defmodule LoggerLogstashBackend.TCPTest do
   test "cant log when minor levels" do
     Logger.debug "hello world", [key1: "field1"]
     {:error, :nothing_received} = get_log
+  end
+
+  test "it reconnects if disconnected", %{accept_socket: accept_socket, listen_socket: listen_socket} do
+    :ok = :gen_tcp.close accept_socket
+
+    assert {:ok, _} = :gen_tcp.accept(listen_socket, 1_000)
   end
 
   defp get_log do

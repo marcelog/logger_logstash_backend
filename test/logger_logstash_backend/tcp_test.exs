@@ -19,7 +19,6 @@ defmodule LoggerLogstashBackend.TCPTest do
   use Timex
 
   import ExUnit.CaptureIO
-  import ExUnit.CaptureLog
 
   # Functions
 
@@ -78,7 +77,7 @@ defmodule LoggerLogstashBackend.TCPTest do
     assert fields["function"] == "test can log/1"
     assert fields["key1"] == "field1"
     assert fields["level"] == "info"
-    assert fields["line"] == 70
+    assert fields["line"] == 69
     assert fields["module"] == to_string(__MODULE__)
     assert fields["pid"] == inspect(self)
     assert fields["some_metadata"] == "go here"
@@ -102,7 +101,7 @@ defmodule LoggerLogstashBackend.TCPTest do
     assert fields["function"] == "test can log pids/1"
     assert fields["pid_key"] == inspect(self)
     assert fields["level"] == "info"
-    assert fields["line"] == 94
+    assert fields["line"] == 93
     assert fields["module"] == to_string(__MODULE__)
     assert fields["pid"] == inspect(self)
     assert fields["some_metadata"] == "go here"

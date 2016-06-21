@@ -18,7 +18,9 @@ defmodule LoggerLogstashBackend.TCPTest do
   require Logger
   use Timex
 
-  @backend {LoggerLogstashBackend, :tcp_test}
+  import ExUnit.CaptureIO
+
+  # Callbacks
 
   setup context = %{line: line} do
     # have to open socket before configure_backend, so that it is listening when connect happens
@@ -66,7 +68,7 @@ defmodule LoggerLogstashBackend.TCPTest do
     assert fields["function"] == "test can log/1"
     assert fields["key1"] == "field1"
     assert fields["level"] == "info"
-    assert fields["line"] == 58
+    assert fields["line"] == 60
     assert fields["module"] == to_string(__MODULE__)
     assert fields["pid"] == inspect(self)
     assert fields["some_metadata"] == "go here"
@@ -90,7 +92,7 @@ defmodule LoggerLogstashBackend.TCPTest do
     assert fields["function"] == "test can log pids/1"
     assert fields["pid_key"] == inspect(self)
     assert fields["level"] == "info"
-    assert fields["line"] == 82
+    assert fields["line"] == 84
     assert fields["module"] == to_string(__MODULE__)
     assert fields["pid"] == inspect(self)
     assert fields["some_metadata"] == "go here"
@@ -111,6 +113,19 @@ defmodule LoggerLogstashBackend.TCPTest do
     :ok = :gen_tcp.close accept_socket
 
     assert {:ok, _} = :gen_tcp.accept(listen_socket, 1_000)
+  end
+
+  test "if it can't reconnect, then is prints to :stderr",
+       %{accept_socket: accept_socket, listen_socket: listen_socket} do
+    :ok = :gen_tcp.close listen_socket
+    :ok = :gen_tcp.close accept_socket
+
+    captured_stderr = capture_io :stderr, fn ->
+      Logger.info "Logged to stderr"
+      :timer.sleep 100
+    end
+
+    assert captured_stderr =~ "Logged to stderr"
   end
 
   defp get_log do

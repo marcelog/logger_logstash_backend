@@ -130,8 +130,11 @@ defmodule LoggerLogstashBackend.TCPTest do
     :ok = :gen_tcp.close listen_socket
     :ok = :gen_tcp.close accept_socket
 
-    Logger.info "Can't connect"
-    :timer.sleep 100
+    # suppress error messages not being tested
+    capture_io :stderr, fn ->
+      Logger.info "Can't connect"
+      :timer.sleep 100
+    end
 
     {:ok, new_listen_socket} = listen(port)
 

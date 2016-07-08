@@ -47,6 +47,13 @@ end
 ```
 Then run mix deps.get to install it.
 
+### Add logger and tzdata as applications:
+
+```elixir
+def application do
+  [applications: [:logger, :tzdata]]
+end
+```
 
 ## Configuration Examples
 

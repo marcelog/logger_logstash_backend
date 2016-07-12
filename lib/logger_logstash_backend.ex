@@ -25,6 +25,10 @@ defmodule LoggerLogstashBackend do
     {:ok, :ok, configure(name, opts)}
   end
 
+  def handle_event(:flush, state) do
+    {:ok, state}
+  end
+
   def handle_event(
     {level, _gl, {Logger, msg, ts, md}}, %{level: min_level} = state
   ) do

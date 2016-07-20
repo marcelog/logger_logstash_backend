@@ -62,8 +62,8 @@ defmodule LoggerLogstashBackend do
     end
   end
 
-  def handle_info({:tcp_closed, socket}, state = %__MODULE__{host: host, port: port, socket: socket}) do
-    case configure_socket(state, host, port) do
+  def handle_info({:tcp_closed, socket}, state = %__MODULE__{socket: socket}) do
+    case configure_socket(state) do
       {:error, _} -> {:ok, %{state | socket: nil}}
       other -> other
     end
@@ -120,12 +120,18 @@ defmodule LoggerLogstashBackend do
     protocol = Keyword.get opts, :protocol, :udp
 
     state = %__MODULE__{level: level, metadata: metadata, name: name, protocol: protocol, type: type}
+            |> put_destination(host, port)
 
-    configure_socket(state, host, port)
+    new_state = case configure_socket(state) do
+      {:error, _} -> state
+      {:ok, configured_state} -> configured_state
+    end
+
+    {:ok, new_state}
   end
 
-  defp configure_socket(state = %__MODULE__{host: host, port: port}) do
-    case Socket.open %{state | host: to_char_list(host), port: port} do
+  defp configure_socket(state = %__MODULE__{}) do
+    case Socket.open state do
       reply = {:error, reason} ->
         IO.puts :stderr, "Could not open socket (#{url(state)}) due to reason #{inspect reason}"
 
@@ -134,9 +140,6 @@ defmodule LoggerLogstashBackend do
         other
     end
   end
-
-  defp configure_socket(state, host, port) when is_nil(host) or is_nil(port), do: {:ok, state}
-  defp configure_socket(state, host, port), do: configure_socket %{state | host: to_char_list(host), port: port}
 
   defp fallback_log(state, json, reason) do
     IO.puts :stderr,
@@ -154,6 +157,9 @@ defmodule LoggerLogstashBackend do
       {key, inspect_pid(value)}
     end
   end
+
+  defp put_destination(state = %__MODULE__{}, host, port) when is_nil(host) or is_nil(port), do: state
+  defp put_destination(state = %__MODULE__{}, host, port), do: %{state | host: to_char_list(host), port: port}
 
   defp send_with_retry(state = %__MODULE__{socket: nil}, json), do: send_with_new_socket(state, json)
   defp send_with_retry(state, json) do

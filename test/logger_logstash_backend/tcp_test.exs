@@ -24,18 +24,47 @@ defmodule LoggerLogstashBackend.TCPTest do
 
   def accept(listen_socket), do: :gen_tcp.accept(listen_socket, 1_000)
 
+  def assert_logged_to_stderr(message) do
+    assert capture_logger_info(message) =~ message
+  end
+
+  def capture_logger_info(message) do
+    capture_io :stderr, fn ->
+      Logger.info message
+      :timer.sleep 100
+    end
+  end
+
+  def capture_setup_backend(context) do
+    capture_io :stderr, fn ->
+      context
+      |> Map.put(:backend, true)
+      |> setup_backend
+    end
+  end
+
   def listen(port \\ 0) do
     :gen_tcp.listen port, [:binary, {:active, true}, {:ip, {127, 0, 0, 1}}, {:reuseaddr, true}]
   end
 
-  # Callbacks
+  def setup_accept(context = %{accept: true}) do
+    %{listen_socket: listen_socket} = context
 
-  setup context = %{line: line} do
-    # have to open socket before configure_backend, so that it is listening when connect happens
-    {:ok, listen_socket} = listen
-    {:ok, port} = :inet.port(listen_socket)
+    {:ok, accept_socket} = accept(listen_socket)
 
-    backend = {LoggerLogstashBackend, String.to_atom("#{inspect __MODULE__}#{line}")}
+    on_exit fn ->
+      :ok = :gen_tcp.close accept_socket
+    end
+
+    Map.put(context, :accept_socket, accept_socket)
+  end
+  def setup_accept(context), do: context
+
+  def setup_backend(context = %{backend: true}) do
+    # don't include in function head so that backend true will always match even if forgot to populate :port
+    %{line: line, port: port} = context
+
+    backend = {LoggerLogstashBackend, String.to_atom("#{inspect __MODULE__}:#{line}")}
 
     Logger.add_backend backend
     Logger.configure_backend backend, [
@@ -49,22 +78,43 @@ defmodule LoggerLogstashBackend.TCPTest do
       protocol: :tcp
     ]
 
-    {:ok, accept_socket} = accept(listen_socket)
-
     on_exit fn ->
       Logger.remove_backend backend
-      :ok = :gen_tcp.close accept_socket
+    end
+
+    context
+  end
+  def setup_backend(context), do: context
+
+  def setup_listen(context = %{listen: true}) do
+    {:ok, listen_socket} = listen
+    {:ok, port} = :inet.port(listen_socket)
+
+    on_exit fn ->
       :ok = :gen_tcp.close listen_socket
     end
 
+    context
+    |> Map.put(:listen_socket, listen_socket)
+    |> Map.put(:port, port)
+  end
+  def setup_listen(context), do: context
+
+  # Callbacks
+
+  setup context do
     full_context = context
-                   |> Map.put(:accept_socket, accept_socket)
-                   |> Map.put(:listen_socket, listen_socket)
-                   |> Map.put(:port, port)
+                   # have to open socket before configure_backend, so that it is listening when connect happens
+                   |> setup_listen
+                   |> setup_backend
+                   |> setup_accept
 
     {:ok, full_context}
   end
 
+  @tag :accept
+  @tag :backend
+  @tag :listen
   test "can log" do
     Logger.info "hello world", [key1: "field1"]
 
@@ -77,7 +127,7 @@ defmodule LoggerLogstashBackend.TCPTest do
     assert fields["function"] == "test can log/1"
     assert fields["key1"] == "field1"
     assert fields["level"] == "info"
-    assert fields["line"] == 69
+    assert fields["line"] == 119
     assert fields["module"] == to_string(__MODULE__)
     assert fields["pid"] == inspect(self)
     assert fields["some_metadata"] == "go here"
@@ -89,6 +139,9 @@ defmodule LoggerLogstashBackend.TCPTest do
     assert (now - ts) < 1000
   end
 
+  @tag :accept
+  @tag :backend
+  @tag :listen
   test "can log pids" do
     Logger.info "pid", [pid_key: self]
 
@@ -101,7 +154,7 @@ defmodule LoggerLogstashBackend.TCPTest do
     assert fields["function"] == "test can log pids/1"
     assert fields["pid_key"] == inspect(self)
     assert fields["level"] == "info"
-    assert fields["line"] == 93
+    assert fields["line"] == 146
     assert fields["module"] == to_string(__MODULE__)
     assert fields["pid"] == inspect(self)
     assert fields["some_metadata"] == "go here"
@@ -113,17 +166,26 @@ defmodule LoggerLogstashBackend.TCPTest do
     assert (now - ts) < 1000
   end
 
+  @tag :accept
+  @tag :backend
+  @tag :listen
   test "cant log when minor levels" do
     Logger.debug "hello world", [key1: "field1"]
     {:error, :nothing_received} = get_log
   end
 
+  @tag :accept
+  @tag :backend
+  @tag :listen
   test "it reconnects if disconnected", %{accept_socket: accept_socket, listen_socket: listen_socket} do
     :ok = :gen_tcp.close accept_socket
 
     assert {:ok, _} = :gen_tcp.accept(listen_socket, 1_000)
   end
 
+  @tag :accept
+  @tag :backend
+  @tag :listen
   test "it reconnects on send if disconnected and listening socket is closed " <>
        "when handle_info({:tcp_closed, _}, _) is called",
        %{accept_socket: accept_socket, listen_socket: listen_socket, port: port} do
@@ -131,10 +193,7 @@ defmodule LoggerLogstashBackend.TCPTest do
     :ok = :gen_tcp.close accept_socket
 
     # suppress error messages not being tested
-    capture_io :stderr, fn ->
-      Logger.info "Can't connect"
-      :timer.sleep 100
-    end
+    capture_logger_info "Can't connect"
 
     {:ok, new_listen_socket} = listen(port)
 
@@ -163,17 +222,30 @@ defmodule LoggerLogstashBackend.TCPTest do
     assert data["message"] == "I reconnected"
   end
 
+  @tag :accept
+  @tag :backend
+  @tag :listen
   test "if it can't reconnect, then is prints to :stderr",
        %{accept_socket: accept_socket, listen_socket: listen_socket} do
     :ok = :gen_tcp.close listen_socket
     :ok = :gen_tcp.close accept_socket
 
-    captured_stderr = capture_io :stderr, fn ->
-      Logger.info "Logged to stderr"
-      :timer.sleep 100
-    end
+    assert_logged_to_stderr("Logged to stderr")
+  end
 
-    assert captured_stderr =~ "Logged to stderr"
+  @tag :listen
+  test "if it can't connect, then it prints to :stderr", context = %{listen_socket: listen_socket, port: port} do
+    :ok = :gen_tcp.close listen_socket
+
+    assert capture_setup_backend(context) =~ "Could not open socket (tcp://127.0.0.1:#{port}) due to reason :econnrefused\n"
+  end
+
+  @tag :listen
+  test "if it can't connect, then any log messages print to :stderr", context = %{listen_socket: listen_socket} do
+    :ok = :gen_tcp.close listen_socket
+    capture_setup_backend(context)
+
+    assert_logged_to_stderr("Logged to stderr")
   end
 
   defp get_log do

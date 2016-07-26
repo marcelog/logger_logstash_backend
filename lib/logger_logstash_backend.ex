@@ -53,7 +53,11 @@ defmodule LoggerLogstashBackend do
              |> Map.put(:level, to_string(level))
              |> inspect_pids
 
-    ts = Timex.datetime(ts, :local)
+    {{year, month, day}, {hour, minute, second, milliseconds}} = ts
+    {:ok, ts} = NaiveDateTime.new(
+      year, month, day, hour, minute, second, (milliseconds * 1000)
+    )
+    ts = Timex.to_datetime ts, Timezone.local
     {:ok, json} = JSX.encode %{
       type: type,
       "@timestamp": Timex.format!(ts, "%FT%T%z", :strftime),

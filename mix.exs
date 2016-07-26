@@ -5,7 +5,7 @@ defmodule LoggerLogstashBackend.Mixfile do
     [app: :logger_logstash_backend,
      name: "logger_logstash_backend",
      source_url: "https://github.com/marcelog/logger_logstash_backend",
-     version: "2.1.1",
+     version: "3.0.0",
      elixir: ">= 1.0.0",
      description: description,
      package: package,
@@ -13,7 +13,7 @@ defmodule LoggerLogstashBackend.Mixfile do
   end
 
   def application do
-    [applications: [:logger, :tzdata]]
+    [applications: [:logger, :timex]]
   end
 
   defp deps do
@@ -21,7 +21,7 @@ defmodule LoggerLogstashBackend.Mixfile do
       {:earmark, "~> 0.2.1", only: :dev},
       {:ex_doc, "~> 0.12.0", only: :dev},
       {:exjsx, "~> 3.2.0"},
-      {:timex, ">= 2.2.1"}
+      {:timex, ">= 3.0.0"}
     ]
   end
 

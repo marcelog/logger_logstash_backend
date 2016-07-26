@@ -57,7 +57,7 @@ defmodule LoggerLogstashBackendTest do
     {:ok, ts} = Timex.parse data["@timestamp"], "%FT%T%z", :strftime
     ts = Timex.to_unix ts
 
-    now = Timex.to_unix Timex.DateTime.local
+    now = Timex.to_unix Timex.local
     assert (now - ts) < 1000
   end
 
@@ -80,7 +80,7 @@ defmodule LoggerLogstashBackendTest do
     {:ok, ts} = Timex.parse data["@timestamp"], "%FT%T%z", :strftime
     ts = Timex.to_unix ts
 
-    now = Timex.to_unix Timex.DateTime.local
+    now = Timex.to_unix Timex.local
     assert (now - ts) < 1000
   end
 

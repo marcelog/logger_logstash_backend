@@ -6,7 +6,7 @@ defmodule LoggerLogstashBackend.Mixfile do
      name: "logger_logstash_backend",
      source_url: "https://github.com/marcelog/logger_logstash_backend",
      version: "3.0.0",
-     elixir: ">= 1.0.0",
+     elixir: "~> 1.3",
      description: description,
      package: package,
      deps: deps]

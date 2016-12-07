@@ -54,7 +54,7 @@ defmodule LoggerLogstashBackendTest do
       "key1" => "field1"
     }
     assert contains?(data["fields"], expected)
-    {:ok, ts} = Timex.parse data["@timestamp"], "%FT%T%z", :strftime
+    {:ok, ts} = Timex.parse data["@timestamp"], "{ISO:Extended}"
     ts = Timex.to_unix ts
 
     now = Timex.to_unix Timex.local
@@ -77,7 +77,7 @@ defmodule LoggerLogstashBackendTest do
       "line" => 65
     }
     assert contains?(data["fields"], expected)
-    {:ok, ts} = Timex.parse data["@timestamp"], "%FT%T%z", :strftime
+    {:ok, ts} = Timex.parse data["@timestamp"], "{ISO:Extended}"
     ts = Timex.to_unix ts
 
     now = Timex.to_unix Timex.local

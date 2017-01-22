@@ -40,7 +40,7 @@ defmodule LoggerLogstashBackendTest do
 
   test "can log" do
     Logger.info "hello world", [key1: "field1"]
-    json = get_log
+    json = get_log()
     {:ok, data} = JSX.decode json
     assert data["type"] === "some_app"
     assert data["message"] === "hello world"
@@ -48,7 +48,7 @@ defmodule LoggerLogstashBackendTest do
       "function" => "test can log/1",
       "level" => "info",
       "module" => "Elixir.LoggerLogstashBackendTest",
-      "pid" => (inspect self),
+      "pid" => (inspect self()),
       "some_metadata" => "go here",
       "line" => 42,
       "key1" => "field1"
@@ -62,8 +62,8 @@ defmodule LoggerLogstashBackendTest do
   end
 
   test "can log pids" do
-    Logger.info "pid", [pid_key: self]
-    json = get_log
+    Logger.info "pid", [pid_key: self()]
+    json = get_log()
     {:ok, data} = JSX.decode json
     assert data["type"] === "some_app"
     assert data["message"] === "pid"
@@ -71,8 +71,8 @@ defmodule LoggerLogstashBackendTest do
       "function" => "test can log pids/1",
       "level" => "info",
       "module" => "Elixir.LoggerLogstashBackendTest",
-      "pid" => (inspect self),
-      "pid_key" => inspect(self),
+      "pid" => (inspect self()),
+      "pid_key" => inspect(self()),
       "some_metadata" => "go here",
       "line" => 65
     }
@@ -86,7 +86,7 @@ defmodule LoggerLogstashBackendTest do
 
   test "cant log when minor levels" do
     Logger.debug "hello world", [key1: "field1"]
-    :nothing_received = get_log
+    :nothing_received = get_log()
   end
 
   defp get_log do

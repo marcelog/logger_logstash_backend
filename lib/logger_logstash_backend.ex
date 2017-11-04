@@ -14,7 +14,7 @@
 # limitations under the License.
 ################################################################################
 defmodule LoggerLogstashBackend do
-  use GenEvent
+  @behaviour :gen_event
   use Timex
 
   def init({__MODULE__, name}) do
@@ -23,6 +23,10 @@ defmodule LoggerLogstashBackend do
 
   def handle_call({:configure, opts}, %{name: name}) do
     {:ok, :ok, configure(name, opts)}
+  end
+
+  def handle_info(_, state) do
+    {:ok, state}
   end
 
   def handle_event(:flush, state) do
@@ -36,6 +40,14 @@ defmodule LoggerLogstashBackend do
       log_event level, msg, ts, md, state
     end
     {:ok, state}
+  end
+
+  def code_change(_old_vsn, state, _extra) do
+    {:ok, state}
+  end
+
+  def terminate(_reason, _state) do
+    :ok
   end
 
   defp log_event(
@@ -64,7 +76,7 @@ defmodule LoggerLogstashBackend do
       message: to_string(msg),
       fields: fields
     }
-    :gen_udp.send socket, host, port, to_char_list(json)
+    :gen_udp.send socket, host, port, to_charlist(json)
   end
 
   defp configure(name, opts) do
@@ -80,7 +92,7 @@ defmodule LoggerLogstashBackend do
     {:ok, socket} = :gen_udp.open 0
     %{
       name: name,
-      host: to_char_list(host),
+      host: to_charlist(host),
       port: port,
       level: level,
       socket: socket,

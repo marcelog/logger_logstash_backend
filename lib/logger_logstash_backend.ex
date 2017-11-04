@@ -60,7 +60,7 @@ defmodule LoggerLogstashBackend do
     ts = Timex.to_datetime ts, Timezone.local
     {:ok, json} = JSX.encode %{
       type: type,
-      "@timestamp": Timex.format!(ts, "%FT%T%z", :strftime),
+      "@timestamp": Timex.format!(ts, "{ISO:Extended}"),
       message: to_string(msg),
       fields: fields
     }

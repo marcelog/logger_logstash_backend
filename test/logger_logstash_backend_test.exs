@@ -26,7 +26,6 @@ defmodule LoggerLogstashBackendTest do
       host: "127.0.0.1",
       port: 10001,
       level: :info,
-      type: "some_app",
       metadata: [
         some_metadata: "go here"
       ]
@@ -42,7 +41,6 @@ defmodule LoggerLogstashBackendTest do
     Logger.info "hello world", [key1: "field1"]
     json = get_log()
     {:ok, data} = JSX.decode json
-    assert data["type"] === "some_app"
     assert data["message"] === "hello world"
     expected = %{
       "function" => "test can log/1",
@@ -50,7 +48,7 @@ defmodule LoggerLogstashBackendTest do
       "module" => "Elixir.LoggerLogstashBackendTest",
       "pid" => (inspect self()),
       "some_metadata" => "go here",
-      "line" => 42,
+      "line" => 41,
       "key1" => "field1"
     }
     assert contains?(data["fields"], expected)
@@ -65,7 +63,6 @@ defmodule LoggerLogstashBackendTest do
     Logger.info "pid", [pid_key: self()]
     json = get_log()
     {:ok, data} = JSX.decode json
-    assert data["type"] === "some_app"
     assert data["message"] === "pid"
     expected = %{
       "function" => "test can log pids/1",
@@ -74,7 +71,7 @@ defmodule LoggerLogstashBackendTest do
       "pid" => (inspect self()),
       "pid_key" => inspect(self()),
       "some_metadata" => "go here",
-      "line" => 65
+      "line" => 63
     }
     assert contains?(data["fields"], expected)
     {:ok, ts} = Timex.parse data["@timestamp"], "{ISO:Extended}"

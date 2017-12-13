@@ -54,7 +54,6 @@ defmodule LoggerLogstashBackend do
     level, msg, ts, md, %{
       host: host,
       port: port,
-      type: type,
       metadata: metadata,
       socket: socket
     }
@@ -71,7 +70,6 @@ defmodule LoggerLogstashBackend do
     )
     ts = Timex.to_datetime ts, Timezone.local
     {:ok, json} = JSX.encode %{
-      type: type,
       "@timestamp": Timex.format!(ts, "{ISO:Extended}"),
       message: to_string(msg),
       fields: fields
@@ -86,7 +84,6 @@ defmodule LoggerLogstashBackend do
 
     level = Keyword.get opts, :level, :debug
     metadata = Keyword.get opts, :metadata, []
-    type = Keyword.get opts, :type, "elixir"
     host = Keyword.get opts, :host
     port = Keyword.get opts, :port
     {:ok, socket} = :gen_udp.open 0
@@ -96,7 +93,6 @@ defmodule LoggerLogstashBackend do
       port: port,
       level: level,
       socket: socket,
-      type: type,
       metadata: metadata
     }
   end

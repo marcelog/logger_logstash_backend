@@ -48,7 +48,7 @@ defmodule LoggerLogstashBackendTest do
       "module" => "Elixir.LoggerLogstashBackendTest",
       "pid" => (inspect self()),
       "some_metadata" => "go here",
-      "line" => 42,
+      "line" => 41,
       "key1" => "field1"
     }
     assert contains?(data["fields"], expected)
@@ -71,7 +71,7 @@ defmodule LoggerLogstashBackendTest do
       "pid" => (inspect self()),
       "pid_key" => inspect(self()),
       "some_metadata" => "go here",
-      "line" => 65
+      "line" => 63
     }
     assert contains?(data["fields"], expected)
     {:ok, ts} = Timex.parse data["@timestamp"], "{ISO:Extended}"

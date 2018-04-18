@@ -16,6 +16,8 @@ that will send logs to the [Logstash UDP input](https://www.elastic.co/guide/en/
  be merged with the metadata sent in every log message.
  * **level**: Atom. Minimum level for this backend.
  * **type**: String.t. Type of logs. Useful to filter in logstash.
+ * **timezone**: String.t. Server timezone. Used to convert from naive timestamp. Default `"Etc/UTC"`.
+ * **json_encoder**: Atom. Module to be used for JSON encoding. Default `Jason`.
 
 ## Sample Logstash config
 ```
@@ -51,7 +53,7 @@ Add logger and tzdata as applications:
 
 ```elixir
 def application do
-  [applications: [:logger, :timex]]
+  [applications: [:logger]]
 end
 ```
 
@@ -81,5 +83,7 @@ config :logger, :error_log,
   type: "my_type_of_app_or_node",
   metadata: [
     extra_fields: "go here"
-  ]
+  ],
+  timezone: "Etc/UTC",
+  json_encoder: Jason
 ```

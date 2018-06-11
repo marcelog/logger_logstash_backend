@@ -17,7 +17,7 @@ that will send logs to the [Logstash UDP input](https://www.elastic.co/guide/en/
  * **level**: Atom. Minimum level for this backend.
  * **type**: String.t. Type of logs. Useful to filter in logstash.
  * **timezone**: String.t. Server timezone. Used to convert from naive timestamp. Default `"Etc/UTC"`.
- * **json_encoder**: Atom. Module to be used for JSON encoding. Default `Jason`.
+ * **json_encoder**: Atom. Module to be used for JSON encoding. The default is `Jason`, add it to your mix deps to use.
 
 ## Sample Logstash config
 ```

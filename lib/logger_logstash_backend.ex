@@ -51,15 +51,13 @@ defmodule LoggerLogstashBackend do
     :ok
   end
 
-  defp log_event(level, msg, ts, md, %{
-         host: host,
-         port: port,
-         type: type,
-         metadata: metadata,
-         socket: socket,
-         timezone: timezone,
-         json_encoder: json_encoder
-       }) do
+  defp log_event(
+         level,
+         msg,
+         ts,
+         md,
+         %{type: type, metadata: metadata, timezone: timezone, json_encoder: json_encoder} = state
+       ) do
     fields =
       md
       |> Keyword.merge(metadata)
@@ -90,7 +88,15 @@ defmodule LoggerLogstashBackend do
         fields: fields
       })
 
-    :gen_udp.send(socket, host, port, to_charlist(json))
+    send_log(state, json)
+  end
+
+  defp send_log(%{protocol: :udp, socket: socket, host: host, port: port} = state, json) do
+    :gen_udp.send(socket, host, port, [json, "\n"])
+  end
+
+  defp send_log(%{protocol: :tcp, socket: socket} = state, json) do
+    :gen_tcp.send(socket, [json, "\n"])
   end
 
   defp configure(name, opts) do
@@ -105,19 +111,32 @@ defmodule LoggerLogstashBackend do
     port = Keyword.get(opts, :port)
     timezone = Keyword.get(opts, :timezone, "Etc/UTC")
     json_encoder = Keyword.get(opts, :json_encoder, Jason)
-    {:ok, socket} = :gen_udp.open(0)
+    protocol = Keyword.get(opts, :protocol, :udp)
 
     %{
       name: name,
       host: to_charlist(host),
       port: port,
       level: level,
-      socket: socket,
       type: type,
       metadata: metadata,
       timezone: timezone,
-      json_encoder: json_encoder
+      json_encoder: json_encoder,
+      protocol: protocol
     }
+    |> open_socket()
+  end
+
+  defp open_socket(%{protocol: :udp} = state) do
+    {:ok, socket} = :gen_udp.open(0)
+    Map.put(state, :socket, socket)
+  end
+
+  defp open_socket(%{protocol: :tcp} = state) do
+    {:ok, socket} =
+      :gen_tcp.connect(state.host, state.port, [{:active, true}, :binary, {:keepalive, true}])
+
+    Map.put(state, :socket, socket)
   end
 
   # inspects the argument only if it is a pid

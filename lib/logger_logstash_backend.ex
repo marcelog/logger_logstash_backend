@@ -146,7 +146,7 @@ defmodule LoggerLogstashBackend do
     {:ok, socket} =
       :gen_tcp.connect(state.host, state.port, [{:active, true}, :binary, {:keepalive, true}])
 
-    socket = :ssl.connect(socket, fail_if_no_peer_cert: true)
+    {:ok, socket} = :ssl.connect(socket, fail_if_no_peer_cert: true)
     Map.put(state, :socket, socket)
   end
 

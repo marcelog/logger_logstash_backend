@@ -95,6 +95,10 @@ defmodule LoggerLogstashBackend do
     :gen_udp.send(socket, host, port, [json, "\n"])
   end
 
+  defp send_log(%{protocol: :tcp, ssl: true, socket: socket} = state, json) do
+    :ssl.send(socket, [json, "\n"])
+  end
+
   defp send_log(%{protocol: :tcp, socket: socket} = state, json) do
     :gen_tcp.send(socket, [json, "\n"])
   end
@@ -112,6 +116,11 @@ defmodule LoggerLogstashBackend do
     timezone = Keyword.get(opts, :timezone, "Etc/UTC")
     json_encoder = Keyword.get(opts, :json_encoder, Jason)
     protocol = Keyword.get(opts, :protocol, :udp)
+    ssl = Keyword.get(opts, :ssl, false)
+
+    if ssl && protocol == :udp do
+      raise ArgumentError, message: "cannot use SSL in combination with UDP. Use TCP instead"
+    end
 
     %{
       name: name,
@@ -122,13 +131,22 @@ defmodule LoggerLogstashBackend do
       metadata: metadata,
       timezone: timezone,
       json_encoder: json_encoder,
-      protocol: protocol
+      protocol: protocol,
+      ssl: ssl
     }
     |> open_socket()
   end
 
   defp open_socket(%{protocol: :udp} = state) do
     {:ok, socket} = :gen_udp.open(0)
+    Map.put(state, :socket, socket)
+  end
+
+  defp open_socket(%{protocol: :tcp, ssl: true} = state) do
+    {:ok, socket} =
+      :gen_tcp.connect(state.host, state.port, [{:active, true}, :binary, {:keepalive, true}])
+
+    socket = :ssl.connect(socket, fail_if_no_peer_cert: true)
     Map.put(state, :socket, socket)
   end
 

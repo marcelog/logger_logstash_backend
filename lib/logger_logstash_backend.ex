@@ -80,13 +80,17 @@ defmodule LoggerLogstashBackend do
 
     {:ok, datetime} = DateTime.from_naive(ts, timezone)
 
-    {:ok, json} =
-      json_encoder.encode(%{
-        type: type,
-        "@timestamp": DateTime.to_iso8601(datetime),
-        message: to_string(msg),
-        fields: fields
-      })
+    message =
+      Map.merge(
+        %{
+          type: type,
+          "@timestamp": DateTime.to_iso8601(datetime),
+          message: to_string(msg)
+        },
+        fields
+      )
+
+    {:ok, json} = json_encoder.encode(message)
 
     send_log(state, json)
   end

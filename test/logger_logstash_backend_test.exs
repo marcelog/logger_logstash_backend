@@ -58,8 +58,8 @@ defmodule LoggerLogstashBackendTest do
       "key1" => "field1"
     }
 
-    assert data["fields"]["line"] == expected["line"]
-    assert contains?(data["fields"], expected)
+    assert data["line"] == expected["line"]
+    assert contains?(data, expected)
     {:ok, dt, _tz_offset} = DateTime.from_iso8601(data["@timestamp"])
     ts = DateTime.to_unix(dt)
 
@@ -84,8 +84,8 @@ defmodule LoggerLogstashBackendTest do
       "line" => 71
     }
 
-    assert data["fields"]["line"] == expected["line"]
-    assert contains?(data["fields"], expected)
+    assert data["line"] == expected["line"]
+    assert contains?(data, expected)
     {:ok, dt, _tz_offset} = DateTime.from_iso8601(data["@timestamp"])
     ts = DateTime.to_unix(dt)
 

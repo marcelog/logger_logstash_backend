@@ -91,15 +91,15 @@ defmodule LoggerLogstashBackend do
     send_log(state, json)
   end
 
-  defp send_log(%{protocol: :udp, socket: socket, host: host, port: port} = state, json) do
+  defp send_log(%{protocol: :udp, socket: socket, host: host, port: port}, json) do
     :gen_udp.send(socket, host, port, [json, "\n"])
   end
 
-  defp send_log(%{protocol: :tcp, ssl: true, socket: socket} = state, json) do
+  defp send_log(%{protocol: :tcp, ssl: true, socket: socket}, json) do
     :ssl.send(socket, [json, "\n"])
   end
 
-  defp send_log(%{protocol: :tcp, socket: socket} = state, json) do
+  defp send_log(%{protocol: :tcp, socket: socket}, json) do
     :gen_tcp.send(socket, [json, "\n"])
   end
 

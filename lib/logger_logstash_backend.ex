@@ -162,7 +162,7 @@ defmodule LoggerLogstashBackend do
   end
 
   defp log_error(error, %{recorded_error: false} = state) do
-    Logger.info(
+    Logger.error(
       "could not connect to logstash via #{inspect(state.protocol)}, reason: #{inspect(error)}"
     )
 

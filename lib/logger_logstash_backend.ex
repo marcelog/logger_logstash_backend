@@ -144,7 +144,8 @@ defmodule LoggerLogstashBackend do
       json_encoder: json_encoder,
       protocol: protocol,
       ssl: ssl,
-      socket: nil
+      socket: nil,
+      recorded_error: false
     }
   end
 
@@ -160,14 +161,20 @@ defmodule LoggerLogstashBackend do
     %{state | socket: nil}
   end
 
+  defp log_error(error, %{recorded_error: false} = state) do
+    Logger.info(
+      "could not connect to logstash via #{inspect(state.protocol)}, reason: #{inspect(error)}"
+    )
+
+    %{state | recorded_error: true}
+  end
+
+  defp log_error(_error, state), do: state
+
   defp open_socket(%{protocol: :udp, socket: nil} = state) do
     case :gen_udp.open(0) do
-      {:ok, socket} ->
-        Map.put(state, :socket, socket)
-
-      {:error, reason} ->
-        Logger.info("could not connect to logstash via udp, reason: #{inspect(reason)}")
-        state
+      {:ok, socket} -> Map.put(state, :socket, socket)
+      {:error, reason} -> log_error(reason, state)
     end
   end
 
@@ -177,21 +184,15 @@ defmodule LoggerLogstashBackend do
          {:ok, socket} <- :ssl.connect(socket, fail_if_no_peer_cert: true) do
       Map.put(state, :socket, socket)
     else
-      {:error, reason} ->
-        Logger.info("could not connect via tcp (with ssl), reason: #{inspect(reason)}")
-        state
+      {:error, reason} -> log_error(reason, state)
     end
   end
 
   defp open_socket(%{protocol: :tcp, socket: nil} = state) do
     :gen_tcp.connect(state.host, state.port, [{:active, true}, :binary, {:keepalive, true}])
     |> case do
-      {:ok, socket} ->
-        Map.put(state, :socket, socket)
-
-      {:error, reason} ->
-        Logger.info("could not connect via tcp, reason: #{inspect(reason)}")
-        state
+      {:ok, socket} -> Map.put(state, :socket, socket)
+      {:error, reason} -> log_error(reason, state)
     end
   end
 

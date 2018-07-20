@@ -16,11 +16,14 @@
 defmodule LoggerLogstashBackend do
   @behaviour :gen_event
 
+  require Logger
+
   def init({__MODULE__, name}) do
     {:ok, configure(name, [])}
   end
 
-  def handle_call({:configure, opts}, %{name: name}) do
+  def handle_call({:configure, opts}, %{name: name} = state) do
+    close_socket(state)
     {:ok, :ok, configure(name, opts)}
   end
 
@@ -36,11 +39,13 @@ defmodule LoggerLogstashBackend do
         {level, _gl, {Logger, msg, ts, md}},
         %{level: min_level} = state
       ) do
+    new_state = open_socket(state)
+
     if is_nil(min_level) or Logger.compare_levels(level, min_level) != :lt do
-      log_event(level, msg, ts, md, state)
+      log_event(level, msg, ts, md, new_state)
     end
 
-    {:ok, state}
+    {:ok, new_state}
   end
 
   def code_change(_old_vsn, state, _extra) do
@@ -95,6 +100,8 @@ defmodule LoggerLogstashBackend do
     send_log(state, json)
   end
 
+  defp send_log(%{socket: nil}, _json), do: nil
+
   defp send_log(%{protocol: :udp, socket: socket, host: host, port: port}, json) do
     :ok = :gen_udp.send(socket, host, port, [json, "\n"])
   end
@@ -136,30 +143,60 @@ defmodule LoggerLogstashBackend do
       timezone: timezone,
       json_encoder: json_encoder,
       protocol: protocol,
-      ssl: ssl
+      ssl: ssl,
+      socket: nil,
+      recorded_error: false
     }
-    |> open_socket()
   end
 
-  defp open_socket(%{protocol: :udp} = state) do
-    {:ok, socket} = :gen_udp.open(0)
-    Map.put(state, :socket, socket)
+  defp close_socket(%{socket: nil} = state), do: state
+
+  defp close_socket(%{protocol: :udp} = state) do
+    :ok = :gen_udp.close(state.socket)
+    %{state | socket: nil}
   end
 
-  defp open_socket(%{protocol: :tcp, ssl: true} = state) do
-    {:ok, socket} =
-      :gen_tcp.connect(state.host, state.port, [{:active, true}, :binary, {:keepalive, true}])
-
-    {:ok, socket} = :ssl.connect(socket, fail_if_no_peer_cert: true)
-    Map.put(state, :socket, socket)
+  defp close_socket(%{protocol: :tcp} = state) do
+    :gen_tcp.shutdown(state.socket, :write)
+    %{state | socket: nil}
   end
 
-  defp open_socket(%{protocol: :tcp} = state) do
-    {:ok, socket} =
-      :gen_tcp.connect(state.host, state.port, [{:active, true}, :binary, {:keepalive, true}])
+  defp log_error(error, %{recorded_error: false} = state) do
+    Logger.error(
+      "could not connect to logstash via #{inspect(state.protocol)}, reason: #{inspect(error)}"
+    )
 
-    Map.put(state, :socket, socket)
+    %{state | recorded_error: true}
   end
+
+  defp log_error(_error, state), do: state
+
+  defp open_socket(%{protocol: :udp, socket: nil} = state) do
+    case :gen_udp.open(0) do
+      {:ok, socket} -> Map.put(state, :socket, socket)
+      {:error, reason} -> log_error(reason, state)
+    end
+  end
+
+  defp open_socket(%{protocol: :tcp, ssl: true, socket: nil} = state) do
+    with {:ok, socket} <-
+           :gen_tcp.connect(state.host, state.port, [{:active, true}, :binary, {:keepalive, true}]),
+         {:ok, socket} <- :ssl.connect(socket, fail_if_no_peer_cert: true) do
+      Map.put(state, :socket, socket)
+    else
+      {:error, reason} -> log_error(reason, state)
+    end
+  end
+
+  defp open_socket(%{protocol: :tcp, socket: nil} = state) do
+    :gen_tcp.connect(state.host, state.port, [{:active, true}, :binary, {:keepalive, true}])
+    |> case do
+      {:ok, socket} -> Map.put(state, :socket, socket)
+      {:error, reason} -> log_error(reason, state)
+    end
+  end
+
+  defp open_socket(state), do: state
 
   # inspects the argument only if it is a pid
   defp inspect_pid(pid) when is_pid(pid), do: inspect(pid)

@@ -173,7 +173,7 @@ defmodule LoggerLogstashBackend do
 
   defp open_socket(%{protocol: :udp, socket: nil} = state) do
     case :gen_udp.open(0) do
-      {:ok, socket} -> Map.put(state, :socket, socket)
+      {:ok, socket} -> Map.merge(state, %{socket: socket, recorded_error: false})
       {:error, reason} -> log_error(reason, state)
     end
   end
@@ -182,7 +182,7 @@ defmodule LoggerLogstashBackend do
     with {:ok, socket} <-
            :gen_tcp.connect(state.host, state.port, [{:active, true}, :binary, {:keepalive, true}]),
          {:ok, socket} <- :ssl.connect(socket, fail_if_no_peer_cert: true) do
-      Map.put(state, :socket, socket)
+      Map.merge(state, %{socket: socket, recorded_error: false})
     else
       {:error, reason} -> log_error(reason, state)
     end
@@ -191,7 +191,7 @@ defmodule LoggerLogstashBackend do
   defp open_socket(%{protocol: :tcp, socket: nil} = state) do
     :gen_tcp.connect(state.host, state.port, [{:active, true}, :binary, {:keepalive, true}])
     |> case do
-      {:ok, socket} -> Map.put(state, :socket, socket)
+      {:ok, socket} -> Map.merge(state, %{socket: socket, recorded_error: false})
       {:error, reason} -> log_error(reason, state)
     end
   end

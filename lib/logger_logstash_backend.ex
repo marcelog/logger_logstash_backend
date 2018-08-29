@@ -189,7 +189,12 @@ defmodule LoggerLogstashBackend do
   end
 
   defp open_socket(%{protocol: :tcp, socket: nil} = state) do
-    :gen_tcp.connect(state.host, state.port, [{:active, true}, :binary, {:keepalive, true}])
+    :gen_tcp.connect(
+      state.host,
+      state.port,
+      [{:active, true}, :binary, {:keepalive, true}, {:send_timeout, 10_000}],
+      10_000
+    )
     |> case do
       {:ok, socket} -> Map.merge(state, %{socket: socket, recorded_error: false})
       {:error, reason} -> log_error(reason, state)

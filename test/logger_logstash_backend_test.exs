@@ -84,6 +84,13 @@ defmodule LoggerLogstashBackendTest do
     assert (now - ts) < 1000
   end
 
+  test "can log with unicode" do
+    Logger.info "hëłłö worlð"
+    json = get_log()
+    {:ok, data} = JSX.decode json
+    assert data["message"] === "hëłłö worlð"
+  end
+
   test "cant log when minor levels" do
     Logger.debug "hello world", [key1: "field1"]
     :nothing_received = get_log()

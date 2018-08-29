@@ -76,7 +76,7 @@ defmodule LoggerLogstashBackend do
       message: to_string(msg),
       fields: fields
     }
-    :gen_udp.send socket, host, port, to_charlist(json)
+    :gen_udp.send socket, host, port, json
   end
 
   defp configure(name, opts) do

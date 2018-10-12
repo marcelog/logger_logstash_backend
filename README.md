@@ -81,5 +81,8 @@ config :logger, :error_log,
   type: "my_type_of_app_or_node",
   metadata: [
     extra_fields: "go here"
+  ],
+  ex_jsx_opts: [
+    <see ex_jsx documentation for options to pass to JSX.encode>
   ]
 ```

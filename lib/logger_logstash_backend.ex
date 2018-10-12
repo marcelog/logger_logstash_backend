@@ -56,7 +56,8 @@ defmodule LoggerLogstashBackend do
       port: port,
       type: type,
       metadata: metadata,
-      socket: socket
+      socket: socket,
+      ex_jsx_opts: ex_jsx_opts
     }
   ) do
     fields = md
@@ -70,12 +71,15 @@ defmodule LoggerLogstashBackend do
       year, month, day, hour, minute, second, (milliseconds * 1000)
     )
     ts = Timex.to_datetime ts, Timezone.local
-    {:ok, json} = JSX.encode %{
-      type: type,
-      "@timestamp": Timex.format!(ts, "{ISO:Extended}"),
-      message: to_string(msg),
-      fields: fields
-    }
+    {:ok, json} = JSX.encode(
+      %{
+        type: type,
+        "@timestamp": Timex.format!(ts, "{ISO:Extended}"),
+        message: to_string(msg),
+        fields: fields
+      },
+      ex_jsx_opts
+    )
     :gen_udp.send socket, host, port, to_charlist(json)
   end
 
@@ -89,6 +93,7 @@ defmodule LoggerLogstashBackend do
     type = Keyword.get opts, :type, "elixir"
     host = Keyword.get opts, :host
     port = Keyword.get opts, :port
+    ex_jsx_opts = Keyword.get opts, :ex_jsx_opts, []
     {:ok, socket} = :gen_udp.open 0
     %{
       name: name,
@@ -97,7 +102,8 @@ defmodule LoggerLogstashBackend do
       level: level,
       socket: socket,
       type: type,
-      metadata: metadata
+      metadata: metadata,
+      ex_jsx_opts: ex_jsx_opts
     }
   end
 

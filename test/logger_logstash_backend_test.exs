@@ -89,6 +89,14 @@ defmodule LoggerLogstashBackendTest do
     :nothing_received = get_log()
   end
 
+  test "can pass ex_jsx_options" do
+    conf_with_uescape
+    Logger.info "µ", [pid_key: self()]
+    json = get_log()
+    {:ok, data} = JSX.decode json
+    assert data["message"] === "µ"
+  end
+
   defp get_log do
     receive do
       {:udp, _, _, _, json} -> json
@@ -100,5 +108,18 @@ defmodule LoggerLogstashBackendTest do
     Enum.all?(Map.to_list(map2), fn {key, value} ->
       Map.fetch!(map1, key) == value
     end)
+  end
+
+  defp conf_with_uescape do
+    Logger.configure_backend @backend, [
+      host: "127.0.0.1",
+      port: 10001,
+      level: :info,
+      type: "some_app",
+      metadata: [
+        some_metadata: "go here"
+      ],
+      ex_jsx_opts: [:uescape]
+    ]
   end
 end

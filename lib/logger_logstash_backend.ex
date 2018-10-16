@@ -41,9 +41,12 @@ defmodule LoggerLogstashBackend do
       ) do
     new_state = open_socket(state)
 
-    if is_nil(min_level) or Logger.compare_levels(level, min_level) != :lt do
-      log_event(level, msg, ts, md, new_state)
-    end
+    new_state =
+      if is_nil(min_level) or Logger.compare_levels(level, min_level) != :lt do
+        log_event(level, msg, ts, md, new_state)
+      else
+        new_state
+      end
 
     {:ok, new_state}
   end
@@ -100,18 +103,39 @@ defmodule LoggerLogstashBackend do
     send_log(state, json)
   end
 
-  defp send_log(%{socket: nil}, _json), do: nil
+  defp send_log(%{socket: nil} = state, _json), do: state
 
-  defp send_log(%{protocol: :udp, socket: socket, host: host, port: port}, json) do
-    :ok = :gen_udp.send(socket, host, port, [json, "\n"])
+  defp send_log(%{protocol: :udp, socket: socket, host: host, port: port} = state, json) do
+    case :gen_udp.send(socket, host, port, [json, "\n"]) do
+      :ok ->
+        state
+
+      {:error, :closed} ->
+        log_error(:closed, state)
+        %{state | socket: nil}
+    end
   end
 
-  defp send_log(%{protocol: :tcp, ssl: true, socket: socket}, json) do
-    :ok = :ssl.send(socket, [json, "\n"])
+  defp send_log(%{protocol: :tcp, ssl: true, socket: socket} = state, json) do
+    case :ssl.send(socket, [json, "\n"]) do
+      :ok ->
+        state
+
+      {:error, :closed} ->
+        log_error(:closed, state)
+        %{state | socket: nil}
+    end
   end
 
-  defp send_log(%{protocol: :tcp, socket: socket}, json) do
-    :ok = :gen_tcp.send(socket, [json, "\n"])
+  defp send_log(%{protocol: :tcp, socket: socket} = state, json) do
+    case :gen_tcp.send(socket, [json, "\n"]) do
+      :ok ->
+        state
+
+      {:error, :closed} ->
+        log_error(:closed, state)
+        %{state | socket: nil}
+    end
   end
 
   defp configure(name, opts) do

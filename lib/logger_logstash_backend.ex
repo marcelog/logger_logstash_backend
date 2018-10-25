@@ -147,6 +147,8 @@ defmodule LoggerLogstashBackend do
     end
   end
 
+  def to_printable(%_{} = v), do: to_printable(inspect(v))
+
   def to_printable(v) when is_map(v) do
     v
     |> Enum.map(fn {k, v} -> {to_printable(k), to_printable(v)} end)

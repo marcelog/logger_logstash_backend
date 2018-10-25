@@ -153,6 +153,35 @@ defmodule LoggerLogstashBackendTest do
     refute data["fields"]["crash_reason"]
   end
 
+  test "can log struct" do
+    struct = %Protocol.UndefinedError{
+      description: "",
+      protocol: Enumerable,
+      value: %MatchError{term: 2}
+    }
+
+    Logger.info("provo a loggare una struct",
+      meta: struct
+    )
+
+    json = get_log()
+
+    {:ok, data} = JSX.decode(json)
+
+    expected = %{
+      "function" => "test can log struct/1",
+      "level" => "info",
+      "meta" =>
+        "%Protocol.UndefinedError{description: \"\", protocol: Enumerable, value: %MatchError{term: 2}}",
+      "module" => "Elixir.LoggerLogstashBackendTest",
+      "some_metadata" => "go here"
+    }
+
+    assert contains?(data["fields"], expected)
+
+    refute data["fields"]["crash_reason"]
+  end
+
   defp get_log do
     receive do
       {:udp, _, _, _, json} -> json

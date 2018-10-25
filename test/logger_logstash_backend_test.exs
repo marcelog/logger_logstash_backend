@@ -104,12 +104,53 @@ defmodule LoggerLogstashBackendTest do
     :nothing_received = get_log()
   end
 
-  test "can log crash reports" do
+  test "can log crash_reason" do
     spawn(fn -> 1 = 2 end)
 
     json = get_log()
 
     {:ok, data} = JSX.decode(json)
+
+    expected = %{
+      "error_logger" => "format",
+      "level" => "error",
+      "some_metadata" => "go here"
+    }
+
+    assert contains?(data["fields"], expected)
+
+    assert is_binary(data["fields"]["crash_reason"])
+  end
+
+  test "can log tuple" do
+    Logger.info("provo a loggare una tupla",
+      meta: %{
+        a: {"alfa", "beta"},
+        b: [1, 5, 9],
+        c: {{1, :two, {2, :three, %{four: "five"}}}, "test"}
+      }
+    )
+
+    json = get_log()
+
+    {:ok, data} = JSX.decode(json)
+
+    expected = %{
+      "function" => "test can log tuple/1",
+      "level" => "info",
+      "line" => 126,
+      "meta" => %{
+        "a" => "{\"alfa\", \"beta\"}",
+        "b" => [1, 5, 9],
+        "c" => "{{1, :two, {2, :three, %{four: \"five\"}}}, \"test\"}"
+      },
+      "module" => "Elixir.LoggerLogstashBackendTest",
+      "some_metadata" => "go here"
+    }
+
+    assert contains?(data["fields"], expected)
+
+    refute data["fields"]["crash_reason"]
   end
 
   defp get_log do

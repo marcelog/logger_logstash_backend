@@ -153,7 +153,5 @@ defmodule LoggerLogstashBackend do
     |> Enum.into(%{})
   end
 
-  def to_printable(v) when is_tuple(v), do: inspect(v)
-
   def to_printable(v), do: inspect(v)
 end

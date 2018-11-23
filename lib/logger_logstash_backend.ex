@@ -204,8 +204,14 @@ defmodule LoggerLogstashBackend do
 
   defp open_socket(%{protocol: :tcp, ssl: true, socket: nil} = state) do
     with {:ok, socket} <-
-           :gen_tcp.connect(state.host, state.port, [{:active, true}, :binary, {:keepalive, true}]),
-         {:ok, socket} <- :ssl.connect(socket, fail_if_no_peer_cert: true) do
+           :gen_tcp.connect(state.host, state.port, [
+             {:active, true},
+             :binary,
+             {:keepalive, true},
+             {:send_timeout, 5000},
+             {:send_timeout_close, true}
+           ]),
+         {:ok, socket} <- :ssl.connect(socket, [fail_if_no_peer_cert: true], 5000) do
       Map.merge(state, %{socket: socket, recorded_error: false})
     else
       {:error, reason} -> log_error(reason, state)
@@ -216,8 +222,14 @@ defmodule LoggerLogstashBackend do
     :gen_tcp.connect(
       state.host,
       state.port,
-      [{:active, true}, :binary, {:keepalive, true}, {:send_timeout, 10_000}],
-      10_000
+      [
+        {:active, true},
+        :binary,
+        {:keepalive, true},
+        {:send_timeout, 5000},
+        {:send_timeout_close, true}
+      ],
+      5000
     )
     |> case do
       {:ok, socket} -> Map.merge(state, %{socket: socket, recorded_error: false})

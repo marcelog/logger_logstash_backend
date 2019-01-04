@@ -112,7 +112,6 @@ defmodule LoggerLogstashBackendTest do
     {:ok, data} = JSX.decode(json)
 
     expected = %{
-      "error_logger" => "format",
       "level" => "error",
       "some_metadata" => "go here"
     }
@@ -136,16 +135,11 @@ defmodule LoggerLogstashBackendTest do
     {:ok, data} = JSX.decode(json)
 
     expected = %{
-      "function" => "test can log tuple/1",
-      "level" => "info",
-      "line" => 126,
       "meta" => %{
         "a" => "{\"alfa\", \"beta\"}",
         "b" => [1, 5, 9],
         "c" => "{{1, :two, {2, :three, %{four: \"five\"}}}, \"test\"}"
-      },
-      "module" => "Elixir.LoggerLogstashBackendTest",
-      "some_metadata" => "go here"
+      }
     }
 
     assert contains?(data["fields"], expected)
@@ -180,6 +174,24 @@ defmodule LoggerLogstashBackendTest do
     assert contains?(data["fields"], expected)
 
     refute data["fields"]["crash_reason"]
+  end
+
+  test "can log multi byte characters" do
+    struct = %Protocol.UndefinedError{
+      description: "",
+      protocol: Enumerable,
+      value: %MatchError{term: 2}
+    }
+
+    log = "𠴕àèìooooo’"
+
+    Logger.info(log)
+
+    json = get_log()
+
+    {:ok, data} = JSX.decode(json)
+
+    assert data["message"] == log
   end
 
   defp get_log do

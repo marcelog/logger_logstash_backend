@@ -21,11 +21,6 @@ defmodule LoggerLogstashBackendTest do
   @backend {LoggerLogstashBackend, :test}
   Logger.add_backend(@backend)
 
-  @multiple_deep_tuple [
-    {"key1", [{"key2", "value2"}, {"key3", "value3"}]},
-    {"another_key", {"another_key2", {"another_value", "another_values_value"}}}
-  ]
-
   setup do
     Logger.configure_backend(@backend,
       host: "127.0.0.1",
@@ -50,7 +45,7 @@ defmodule LoggerLogstashBackendTest do
     Logger.info("hello world", key1: "field1")
     json = get_log()
 
-    {:ok, data} = JSX.decode(json)
+    {:ok, data} = Jason.decode(json)
     assert data["type"] === "some_app"
     assert data["message"] === "hello world"
 
@@ -61,7 +56,6 @@ defmodule LoggerLogstashBackendTest do
       "module" => "Elixir.LoggerLogstashBackendTest",
       "pid" => inspect(self()),
       "some_metadata" => "go here",
-      "line" => 50,
       "key1" => "field1"
     }
 
@@ -76,7 +70,7 @@ defmodule LoggerLogstashBackendTest do
   test "can log pids" do
     Logger.info("pid", pid_key: self())
     json = get_log()
-    {:ok, data} = JSX.decode(json)
+    {:ok, data} = Jason.decode(json)
     assert data["type"] === "some_app"
     assert data["message"] === "pid"
 
@@ -87,8 +81,7 @@ defmodule LoggerLogstashBackendTest do
       "module" => "Elixir.LoggerLogstashBackendTest",
       "pid" => inspect(self()),
       "pid_key" => inspect(self()),
-      "some_metadata" => "go here",
-      "line" => 77
+      "some_metadata" => "go here"
     }
 
     assert contains?(data["fields"], expected)
@@ -109,7 +102,7 @@ defmodule LoggerLogstashBackendTest do
 
     json = get_log()
 
-    {:ok, data} = JSX.decode(json)
+    {:ok, data} = Jason.decode(json)
 
     expected = %{
       "level" => "error",
@@ -132,7 +125,7 @@ defmodule LoggerLogstashBackendTest do
 
     json = get_log()
 
-    {:ok, data} = JSX.decode(json)
+    {:ok, data} = Jason.decode(json)
 
     expected = %{
       "meta" => %{
@@ -160,7 +153,7 @@ defmodule LoggerLogstashBackendTest do
 
     json = get_log()
 
-    {:ok, data} = JSX.decode(json)
+    {:ok, data} = Jason.decode(json)
 
     expected = %{
       "function" => "test can log struct/1",
@@ -177,19 +170,13 @@ defmodule LoggerLogstashBackendTest do
   end
 
   test "can log multi byte characters" do
-    struct = %Protocol.UndefinedError{
-      description: "",
-      protocol: Enumerable,
-      value: %MatchError{term: 2}
-    }
-
     log = "𠴕àèìooooo’"
 
     Logger.info(log)
 
     json = get_log()
 
-    {:ok, data} = JSX.decode(json)
+    {:ok, data} = Jason.decode(json)
 
     assert data["message"] == log
   end
